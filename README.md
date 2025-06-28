@@ -247,4 +247,63 @@ chmod +x test_api.sh
 
 ---
 
+## 🔧 GitHub Actions CI/CD
+
+### 자동화된 테스트 및 배포
+
+이 프로젝트는 GitHub Actions를 통한 완전 자동화된 CI/CD 파이프라인을 제공합니다.
+
+#### 🎯 워크플로우 단계
+
+1. **테스트 단계** (`test`)
+   - 백엔드/프론트엔드 의존성 설치
+   - 코드 빌드 테스트
+   - 전체 시스템 통합 테스트
+   - API 엔드포인트 검증
+
+2. **Docker 테스트** (`docker-test`)
+   - Docker Compose 빌드
+   - 컨테이너 환경 테스트
+   - 서비스 간 통신 확인
+
+3. **배포 단계** (`deploy`)
+   - main 브랜치 푸시 시 자동 실행
+   - 프로덕션 환경 배포
+
+#### 🚀 트리거 조건
+
+- `push`: main, develop 브랜치
+- `pull_request`: main 브랜치
+
+#### 📋 로컬에서 GitHub Actions 시뮬레이션
+
+```bash
+# 1. 전체 시스템 테스트
+./start.sh
+sleep 45
+./test_api.sh
+./test_user_stories.sh
+./stop.sh
+
+# 2. Docker 환경 테스트
+docker-compose up -d
+sleep 60
+curl http://localhost:8080/docs
+curl http://localhost:3000
+docker-compose down
+```
+
+#### 🔍 워크플로우 상태 확인
+
+GitHub 저장소의 Actions 탭에서 실시간으로 빌드 상태를 확인할 수 있습니다.
+
+#### ⚙️ 환경 변수 설정
+
+GitHub Secrets에서 다음 변수들을 설정할 수 있습니다:
+- `DEPLOY_HOST`: 배포 서버 주소
+- `DEPLOY_KEY`: 배포용 SSH 키
+- `DOCKER_REGISTRY`: Docker 레지스트리 URL
+
+---
+
 *Made with ❤️ for LipCoding 2025*

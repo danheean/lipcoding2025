@@ -1,7 +1,12 @@
 #!/bin/bash
 
+# 스크립트가 있는 디렉토리로 이동 (GitHub Actions 대응)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
 echo "🛑 멘토-멘티 매칭 앱 전체 시스템 종료"
 echo "===================================="
+echo "현재 작업 디렉토리: $(pwd)"
 echo ""
 
 # 실행 중인 프로세스 확인

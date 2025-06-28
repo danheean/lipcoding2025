@@ -1,7 +1,12 @@
 #!/bin/bash
 
+# 스크립트가 있는 디렉토리로 이동 (GitHub Actions 대응)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
 echo "🚀 멘토-멘티 매칭 앱 전체 시스템 백그라운드 시작"
 echo "====================================================="
+echo "현재 작업 디렉토리: $(pwd)"
 echo ""
 
 # 기존 프로세스 정리
@@ -14,22 +19,22 @@ sleep 2
 
 # 백엔드 시작
 echo "🔧 백엔드 서버 시작 중..."
-cd backend
+cd "$SCRIPT_DIR/backend"
 chmod +x start.sh
 ./start.sh &
 BACKEND_PID=$!
-cd ..
+cd "$SCRIPT_DIR"
 
 echo "⏰ 백엔드 시작 대기 중..."
 sleep 5
 
 # 프론트엔드 시작
 echo "🎨 프론트엔드 서버 시작 중..."
-cd frontend
+cd "$SCRIPT_DIR/frontend"
 chmod +x start.sh
 ./start.sh &
 FRONTEND_PID=$!
-cd ..
+cd "$SCRIPT_DIR"
 
 echo "⏰ 프론트엔드 시작 대기 중..."
 sleep 8

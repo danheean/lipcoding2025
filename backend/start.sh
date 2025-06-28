@@ -1,6 +1,11 @@
 #!/bin/bash
 
+# 스크립트가 있는 디렉토리로 이동 (GitHub Actions 대응)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
 echo "=== 멘토-멘티 매칭 앱 백엔드 시작 ==="
+echo "현재 작업 디렉토리: $(pwd)"
 echo "포트: 8080"
 echo "Swagger UI: http://localhost:8080/docs"
 echo ""
@@ -8,6 +13,7 @@ echo ""
 # 가상 환경이 있다면 활성화
 if [ -d "venv" ]; then
     source venv/bin/activate
+    echo "가상환경 활성화됨: $(which python)"
 fi
 
 # 의존성 설치

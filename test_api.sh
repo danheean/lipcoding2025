@@ -1,7 +1,17 @@
 #!/bin/bash
 
+# 스크립트가 있는 디렉토리로 이동 (GitHub Actions 대응)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
 # 멘토-멘티 매칭 앱 API 테스트 스크립트
 # API 명세서 100% 준수 검증을 위한 테스트 실행
+
+echo "🧪 멘토-멘티 매칭 앱 API 테스트"
+echo "==============================="
+echo "현재 작업 디렉토리: $(pwd)"
+echo "테스트 시작 시간: $(date)"
+echo ""
 
 API_BASE="http://localhost:8080/api"
 GREEN='\033[0;32m'

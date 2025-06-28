@@ -1,6 +1,11 @@
 #!/bin/bash
 
+# 스크립트가 있는 디렉토리로 이동 (GitHub Actions 대응)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
 echo "=== 멘토-멘티 매칭 앱 프론트엔드 시작 ==="
+echo "현재 작업 디렉토리: $(pwd)"
 echo "포트: 3000"
 echo "URL: http://localhost:3000"
 echo ""

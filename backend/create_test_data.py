@@ -6,7 +6,16 @@
 
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+# 스크립트가 있는 디렉토리를 기준으로 경로 설정 (GitHub Actions 대응)
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+os.chdir(SCRIPT_DIR)
+sys.path.insert(0, SCRIPT_DIR)
+
+print(f"🔧 테스트 데이터 생성 스크립트")
+print(f"현재 작업 디렉토리: {os.getcwd()}")
+print(f"스크립트 디렉토리: {SCRIPT_DIR}")
+print("")
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker

@@ -5,7 +5,15 @@
 
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+# 스크립트가 있는 디렉토리를 기준으로 경로 설정 (GitHub Actions 대응)
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+os.chdir(SCRIPT_DIR)
+sys.path.insert(0, SCRIPT_DIR)
+
+print(f"👥 사용자 목록 조회")
+print(f"현재 작업 디렉토리: {os.getcwd()}")
+print("")
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
