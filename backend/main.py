@@ -118,8 +118,8 @@ Base.metadata.create_all(bind=engine)
 
 # FastAPI 앱 생성
 app = FastAPI(
-    title="Mentor-Mentee Matching API",
-    description="API for matching mentors and mentees in a mentoring platform",
+    title="RiseWith API - 함께 성장하는 멘토링 플랫폼",
+    description="함께 일어서고, 함께 성장하는 멘토링 플랫폼 RiseWith의 API 서비스",
     version="1.0.0"
 )
 

@@ -119,7 +119,7 @@ const Navbar = () => {
   // 역할별 브랜드 아이콘과 색상
   const roleConfig = {
     mentor: {
-      brandIcon: '🌅',
+      brandIcon: '�',
       brandText: 'RiseWith 멘토',
       profileIcon: '🎓',
       color: 'blue'
@@ -1043,28 +1043,14 @@ const Home = () => {
             background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
             color: 'white',
             textAlign: 'center',
-            padding: '40px 30px',
-            border: 'none',
-            boxShadow: '0 15px 35px rgba(37, 99, 235, 0.3)',
-            borderRadius: '16px'
+            padding: '30px',
+            border: 'none'
           }}>
-            <div style={{ fontSize: '56px', marginBottom: '20px', filter: 'drop-shadow(2px 2px 4px rgba(0,0,0,0.3))' }}>🌅</div>
-            <h3 style={{ 
-              marginBottom: '20px', 
-              color: 'white', 
-              fontSize: '28px',
-              fontWeight: 'bold',
-              textShadow: '1px 1px 2px rgba(0, 0, 0, 0.3)'
-            }}>Rise Mentor</h3>
-            <p style={{ 
-              fontSize: '18px', 
-              lineHeight: '1.7', 
-              opacity: 0.95,
-              fontWeight: '400',
-              textShadow: '1px 1px 2px rgba(0, 0, 0, 0.2)'
-            }}>
+            <div style={{ fontSize: '48px', marginBottom: '15px' }}>�</div>
+            <h3 style={{ marginBottom: '15px', color: 'white' }}>Rise Mentor</h3>
+            <p style={{ fontSize: '16px', lineHeight: '1.6', opacity: 0.9 }}>
               경험과 지식으로 다른 이들의<br/>
-              <strong>성공적인 도약</strong>을 함께 이끌어주세요
+              성공적인 도약을 함께 이끌어주세요
             </p>
           </div>
           
@@ -1072,55 +1058,30 @@ const Home = () => {
             background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
             color: 'white',
             textAlign: 'center',
-            padding: '40px 30px',
-            border: 'none',
-            boxShadow: '0 15px 35px rgba(5, 150, 105, 0.3)',
-            borderRadius: '16px'
+            padding: '30px',
+            border: 'none'
           }}>
-            <div style={{ fontSize: '56px', marginBottom: '20px', filter: 'drop-shadow(2px 2px 4px rgba(0,0,0,0.3))' }}>🤲</div>
-            <h3 style={{ 
-              marginBottom: '20px', 
-              color: 'white', 
-              fontSize: '28px',
-              fontWeight: 'bold',
-              textShadow: '1px 1px 2px rgba(0, 0, 0, 0.3)'
-            }}>Rise Together</h3>
-            <p style={{ 
-              fontSize: '18px', 
-              lineHeight: '1.7', 
-              opacity: 0.95,
-              fontWeight: '400',
-              textShadow: '1px 1px 2px rgba(0, 0, 0, 0.2)'
-            }}>
+            <div style={{ fontSize: '48px', marginBottom: '15px' }}>🤲</div>
+            <h3 style={{ marginBottom: '15px', color: 'white' }}>Rise Together</h3>
+            <p style={{ fontSize: '16px', lineHeight: '1.6', opacity: 0.9 }}>
               멘토와 함께 손을 잡고<br/>
-              <strong>더 높은 곳</strong>으로 함께 올라가세요
+              더 높은 곳으로 함께 올라가세요
             </p>
           </div>
         </div>
         
         <div style={{ display: 'flex', gap: '20px', justifyContent: 'center' }}>
           <Link to="/login" className="btn btn-primary" style={{ 
-            padding: '18px 36px', 
-            fontSize: '20px',
-            fontWeight: 'bold',
+            padding: '15px 30px', 
+            fontSize: '18px',
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            border: 'none',
-            borderRadius: '12px',
-            textShadow: '1px 1px 2px rgba(0, 0, 0, 0.2)',
-            boxShadow: '0 8px 20px rgba(102, 126, 234, 0.3)',
-            transform: 'translateY(0)',
-            transition: 'all 0.3s ease'
+            border: 'none'
           }}>
             🚀 시작하기
           </Link>
           <Link to="/signup" className="btn btn-secondary" style={{ 
-            padding: '18px 36px', 
-            fontSize: '20px',
-            fontWeight: 'bold',
-            borderRadius: '12px',
-            boxShadow: '0 8px 20px rgba(0, 0, 0, 0.1)',
-            transform: 'translateY(0)',
-            transition: 'all 0.3s ease'
+            padding: '15px 30px', 
+            fontSize: '18px' 
           }}>
             📝 회원가입
           </Link>

@@ -128,6 +128,11 @@ body {
   padding: 16px 0;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   margin-bottom: 20px;
+  transition: all 0.3s ease;
+}
+
+.navbar-icon-mode {
+  padding: 12px 0;
 }
 
 .navbar-content {
@@ -137,32 +142,223 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  position: relative;
+}
+
+.navbar-controls {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+}
+
+.icon-toggle-btn {
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.icon-toggle-btn:hover {
+  background: #667eea;
+  border-color: #667eea;
+  color: white;
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
 
 .navbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 24px;
   font-weight: bold;
   color: #667eea;
   text-decoration: none;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.navbar-brand:hover {
+  color: #5a67d8;
+  transform: scale(1.05);
+}
+
+.navbar-brand::after {
+  content: attr(title);
+  position: absolute;
+  bottom: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #374151;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  z-index: 1000;
+}
+
+.navbar-brand:hover::after {
+  opacity: 1;
+}
+
+.brand-icon {
+  font-size: 32px;
+  display: inline-block;
+  animation: pulse 3s infinite;
+}
+
+.navbar-icon-mode .brand-icon {
+  font-size: 40px;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+.brand-text {
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  transition: opacity 0.3s ease;
+}
+
+.navbar-icon-mode .brand-text {
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
 }
 
 .navbar-nav {
   display: flex;
-  gap: 20px;
+  gap: 8px;
   align-items: center;
 }
 
-.navbar-nav a {
+.navbar-icon-mode .navbar-nav {
+  gap: 4px;
+}
+
+.navbar-nav a,
+.navbar-nav .logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   color: #374151;
   text-decoration: none;
   font-weight: 500;
-  padding: 8px 16px;
-  border-radius: 6px;
-  transition: background-color 0.2s;
+  padding: 12px 16px;
+  border-radius: 12px;
+  transition: all 0.2s;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 14px;
+  position: relative;
 }
 
-.navbar-nav a:hover {
+.navbar-icon-mode .navbar-nav a,
+.navbar-icon-mode .navbar-nav .logout-btn {
+  padding: 12px;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  justify-content: center;
+}
+
+.navbar-nav a:hover,
+.navbar-nav .logout-btn:hover {
   background-color: #f3f4f6;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.navbar-icon-mode .navbar-nav a:hover,
+.navbar-icon-mode .navbar-nav .logout-btn:hover {
+  transform: translateY(-2px) scale(1.1);
+}
+
+/* 툴팁 스타일 */
+.navbar-nav a::after,
+.navbar-nav .logout-btn::after {
+  content: attr(title);
+  position: absolute;
+  bottom: -35px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #374151;
+  color: white;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  z-index: 1000;
+}
+
+.navbar-nav a:hover::after,
+.navbar-nav .logout-btn:hover::after {
+  opacity: 1;
+}
+
+.nav-icon {
+  font-size: 18px;
+  display: inline-block;
+  transition: all 0.2s;
+}
+
+.navbar-icon-mode .nav-icon {
+  font-size: 22px;
+}
+
+.nav-text {
+  font-weight: 600;
+  transition: opacity 0.3s ease;
+}
+
+.navbar-icon-mode .nav-text {
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+}
+
+.logout-btn {
+  background: #fee2e2 !important;
+  color: #991b1b !important;
+  border: 1px solid #fecaca !important;
+}
+
+.navbar-icon-mode .logout-btn {
+  background: #fee2e2 !important;
+  border: 2px solid #fecaca !important;
+}
+
+.logout-btn:hover {
+  background: #fecaca !important;
+  color: #7f1d1d !important;
+}
+
+.logout-btn:hover {
+  background: #fecaca !important;
+  color: #7f1d1d !important;
 }
 
 .grid {
@@ -633,6 +829,65 @@ body {
   border-top: 1px solid #e5e7eb;
 }
 
+/* ========================
+   페이지 제목 스타일
+   ======================== */
+
+.page-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #374151;
+  font-weight: 700;
+  margin-bottom: 24px;
+}
+
+.page-title.text-center {
+  justify-content: center;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #4b5563;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.title-icon {
+  font-size: 1.2em;
+  display: inline-block;
+  animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-3px);
+  }
+  60% {
+    transform: translateY(-2px);
+  }
+}
+
+/* 호버 효과 */
+.page-title:hover .title-icon,
+.section-title:hover .title-icon {
+  animation: spin 0.5s ease-in-out;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* 반응형 디자인 */
 @media (max-width: 768px) {
   .navbar-content {
@@ -681,4 +936,303 @@ body {
     width: 95%;
     padding: 16px;
   }
+}
+
+/* ==========================================
+   역할별 테마 시스템 
+   ========================================== */
+
+/* 기본 CSS 변수 */
+:root {
+  --primary-color: #667eea;
+  --primary-hover: #5a67d8;
+  --background-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --card-shadow: 0 4px 6px rgba(102, 126, 234, 0.1);
+  --card-hover-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+}
+
+/* 멘토 테마 (블루 계열 - 전문가) */
+.theme-mentor {
+  --primary-color: #2563eb;
+  --primary-hover: #1d4ed8;
+  --secondary-color: #3b82f6;
+  --accent-color: #60a5fa;
+  --background-gradient: linear-gradient(135deg, #1e40af 0%, #3730a3 100%);
+  --card-shadow: 0 4px 6px rgba(37, 99, 235, 0.1);
+  --card-hover-shadow: 0 8px 25px rgba(37, 99, 235, 0.15);
+  --text-primary: #1e3a8a;
+  --border-color: #3b82f6;
+  --background-light: #eff6ff;
+  --background-medium: #dbeafe;
+}
+
+.theme-mentor body {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+}
+
+/* 멘티 테마 (녹색 계열 - 새싹) */
+.theme-mentee {
+  --primary-color: #059669;
+  --primary-hover: #047857;
+  --secondary-color: #10b981;
+  --accent-color: #34d399;
+  --background-gradient: linear-gradient(135deg, #065f46 0%, #064e3b 100%);
+  --card-shadow: 0 4px 6px rgba(5, 150, 105, 0.1);
+  --card-hover-shadow: 0 8px 25px rgba(5, 150, 105, 0.15);
+  --text-primary: #064e3b;
+  --border-color: #10b981;
+  --background-light: #ecfdf5;
+  --background-medium: #d1fae5;
+}
+
+.theme-mentee body {
+  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+}
+
+/* 네비게이션바 테마 스타일 */
+.navbar-blue {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: white;
+  box-shadow: 0 4px 20px rgba(37, 99, 235, 0.3);
+}
+
+.navbar-blue .navbar-brand {
+  color: white;
+}
+
+.navbar-blue .navbar-brand:hover {
+  color: #dbeafe;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+.navbar-blue .navbar-nav a,
+.navbar-blue .navbar-nav .logout-btn {
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.navbar-blue .navbar-nav a:hover,
+.navbar-blue .navbar-nav .logout-btn:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: white;
+  box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
+}
+
+.navbar-blue .icon-toggle-btn {
+  background: rgba(255, 255, 255, 0.9);
+  color: #2563eb;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.navbar-blue .icon-toggle-btn:hover {
+  background: white;
+  color: #1d4ed8;
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.4);
+}
+
+.navbar-green {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  color: white;
+  box-shadow: 0 4px 20px rgba(5, 150, 105, 0.3);
+}
+
+.navbar-green .navbar-brand {
+  color: white;
+}
+
+.navbar-green .navbar-brand:hover {
+  color: #d1fae5;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+.navbar-green .navbar-nav a,
+.navbar-green .navbar-nav .logout-btn {
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.navbar-green .navbar-nav a:hover,
+.navbar-green .navbar-nav .logout-btn:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: white;
+  box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
+}
+
+.navbar-green .icon-toggle-btn {
+  background: rgba(255, 255, 255, 0.9);
+  color: #059669;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.navbar-green .icon-toggle-btn:hover {
+  background: white;
+  color: #047857;
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.4);
+}
+
+/* 카드 테마 스타일 */
+.theme-mentor .card {
+  border: 2px solid var(--border-color);
+  background: var(--background-light);
+  box-shadow: var(--card-shadow);
+}
+
+.theme-mentor .card:hover {
+  box-shadow: var(--card-hover-shadow);
+  border-color: var(--accent-color);
+}
+
+.theme-mentee .card {
+  border: 2px solid var(--border-color);
+  background: var(--background-light);
+  box-shadow: var(--card-shadow);
+}
+
+.theme-mentee .card:hover {
+  box-shadow: var(--card-hover-shadow);
+  border-color: var(--accent-color);
+}
+
+/* 버튼 테마 스타일 */
+.theme-mentor .btn-primary {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  color: white;
+}
+
+.theme-mentor .btn-primary:hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+}
+
+.theme-mentee .btn-primary {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  color: white;
+}
+
+.theme-mentee .btn-primary:hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(5, 150, 105, 0.4);
+}
+
+/* 페이지 제목 테마 */
+.theme-mentor .page-title {
+  color: var(--text-primary);
+  background: var(--background-medium);
+  padding: 12px 20px;
+  border-radius: 12px;
+  border: 2px solid var(--border-color);
+}
+
+.theme-mentee .page-title {
+  color: var(--text-primary);
+  background: var(--background-medium);
+  padding: 12px 20px;
+  border-radius: 12px;
+  border: 2px solid var(--border-color);
+}
+
+/* 상태 표시 스타일 */
+.theme-mentor .status-pending {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #f59e0b;
+}
+
+.theme-mentor .status-accepted {
+  background: var(--background-medium);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
+.theme-mentee .status-pending {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #f59e0b;
+}
+
+.theme-mentee .status-accepted {
+  background: var(--background-medium);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
+/* 로딩 스피너 테마 */
+.theme-mentor .spinner {
+  border-top-color: var(--primary-color);
+}
+
+.theme-mentee .spinner {
+  border-top-color: var(--primary-color);
+}
+
+/* 역할별 전용 애니메이션 */
+.theme-mentor .brand-icon {
+  animation: rise-up 3s infinite;
+}
+
+.theme-mentee .brand-icon {
+  animation: rise-together 3s infinite;
+}
+
+@keyframes rise-up {
+  0%, 100% {
+    transform: scale(1) translateY(0px);
+    filter: hue-rotate(0deg);
+  }
+  50% {
+    transform: scale(1.1) translateY(-5px);
+    filter: hue-rotate(15deg) brightness(1.2);
+  }
+}
+
+@keyframes rise-together {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+    filter: hue-rotate(0deg);
+  }
+  50% {
+    transform: scale(1.15) rotate(5deg);
+    filter: hue-rotate(-10deg) brightness(1.1);
+  }
+}
+
+/* 툴팁 테마 */
+.theme-mentor .navbar-nav a::after,
+.theme-mentor .navbar-nav .logout-btn::after,
+.theme-mentor .navbar-brand::after {
+  background: var(--text-primary);
+}
+
+.theme-mentee .navbar-nav a::after,
+.theme-mentee .navbar-nav .logout-btn::after,
+.theme-mentee .navbar-brand::after {
+  background: var(--text-primary);
+}
+
+/* 홈페이지 버튼 호버 효과 */
+.btn:hover {
+  transform: translateY(-3px) !important;
+  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* 홈페이지 카드 호버 효과 */
+.card:hover {
+  transform: translateY(-5px);
+  transition: all 0.3s ease;
+}
+
+/* RiseWith 브랜드 텍스트 강화 */
+.brand-enhanced {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 900;
+  letter-spacing: -1px;
 }
