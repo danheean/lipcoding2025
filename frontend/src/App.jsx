@@ -34,7 +34,7 @@ const AuthProvider = ({ children }) => {
 
   const fetchUserInfo = async () => {
     try {
-      const response = await axios.get('/me')
+      const response = await axios.get('/profile')
       setUser(response.data)
     } catch (error) {
       console.error('Failed to fetch user info:', error)
@@ -156,12 +156,43 @@ const Login = () => {
     setLoading(false)
   }
 
+  const quickLogin = async (testEmail, testPassword) => {
+    setLoading(true)
+    setError('')
+    setEmail(testEmail)
+    setPassword(testPassword)
+
+    const result = await login(testEmail, testPassword)
+    
+    if (result.success) {
+      navigate('/profile')
+    } else {
+      setError(result.error)
+    }
+    
+    setLoading(false)
+  }
+
   return (
     <div className="container">
       <div className="card" style={{ maxWidth: '400px', margin: '100px auto' }}>
         <h2 className="text-center mb-4">로그인</h2>
         
         {error && <div className="alert alert-error">{error}</div>}
+        
+        {/* 로그인 디버그 정보 */}
+        {loading && (
+          <div style={{ 
+            padding: '10px', 
+            backgroundColor: '#e3f2fd', 
+            borderRadius: '4px', 
+            marginBottom: '15px',
+            fontSize: '12px',
+            color: '#1976d2'
+          }}>
+            🔄 로그인 중... (이메일: {email})
+          </div>
+        )}
         
         <form onSubmit={handleSubmit}>
           <div className="form-group">
@@ -192,6 +223,53 @@ const Login = () => {
             {loading ? '로그인 중...' : '로그인'}
           </button>
         </form>
+        
+        {/* 테스트용 빠른 로그인 버튼들 */}
+        <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
+          <h4 style={{ fontSize: '14px', color: '#666', marginBottom: '10px' }}>🧪 테스트 계정 빠른 로그인</h4>
+          
+          <div style={{ display: 'grid', gap: '8px' }}>
+            <button 
+              onClick={() => quickLogin('sarah.kim@example.com', 'password123')}
+              className="btn btn-secondary"
+              style={{ fontSize: '12px', padding: '8px' }}
+              disabled={loading}
+            >
+              👩‍💻 Sarah Kim (멘토) - 풀스택 개발자
+            </button>
+            
+            <button 
+              onClick={() => quickLogin('david.lee@example.com', 'password123')}
+              className="btn btn-secondary"
+              style={{ fontSize: '12px', padding: '8px' }}
+              disabled={loading}
+            >
+              👨‍💼 David Lee (멘토) - 테크리드 & PM
+            </button>
+            
+            <button 
+              onClick={() => quickLogin('alex.park@example.com', 'password123')}
+              className="btn btn-secondary"
+              style={{ fontSize: '12px', padding: '8px' }}
+              disabled={loading}
+            >
+              🎓 Alex Park (멘티) - 컴공과 학생
+            </button>
+            
+            <button 
+              onClick={() => quickLogin('emily.chen@example.com', 'password123')}
+              className="btn btn-secondary"
+              style={{ fontSize: '12px', padding: '8px' }}
+              disabled={loading}
+            >
+              💻 Emily Chen (멘티) - 부트캠프 졸업생
+            </button>
+          </div>
+          
+          <p style={{ fontSize: '11px', color: '#888', marginTop: '8px', marginBottom: '0' }}>
+            * 모든 테스트 계정의 비밀번호: password123
+          </p>
+        </div>
         
         <div className="text-center" style={{ marginTop: '20px' }}>
           <Link to="/signup">회원가입</Link>

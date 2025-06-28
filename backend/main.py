@@ -26,7 +26,7 @@ ACCESS_TOKEN_EXPIRE_HOURS = 1
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # JWT Bearer 토큰 스키마
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 # 데이터베이스 설정
 SQLALCHEMY_DATABASE_URL = "sqlite:///./mentor_mentee.db"
@@ -55,7 +55,6 @@ class UserProfile(BaseModel):
 
 class MatchRequestCreate(BaseModel):
     mentorId: int
-    menteeId: int
     message: str
 
 # SQLAlchemy 모델들
@@ -95,7 +94,7 @@ app = FastAPI(
 # CORS 설정
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["http://localhost:3000", "http://localhost:3001"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -141,12 +140,15 @@ def create_access_token(data: dict):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)):
+def get_current_user(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security), db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    
+    if not credentials:
+        raise credentials_exception
     
     try:
         token = credentials.credentials
@@ -196,325 +198,401 @@ def test_auth_endpoint(current_user: User = Depends(get_current_user)):
 # 1. 인증 엔드포인트들
 @app.post("/api/signup", status_code=201)
 def signup(user: UserSignup, db: Session = Depends(get_db)):
-    # 이메일 중복 확인
-    if db.query(User).filter(User.email == user.email).first():
-        raise HTTPException(status_code=400, detail="Email already registered")
-    
-    # 비밀번호 해싱
-    hashed_password = get_password_hash(user.password)
-    
-    # 사용자 생성
-    db_user = User(
-        email=user.email,
-        hashed_password=hashed_password,
-        name=user.name,
-        role=user.role
-    )
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
-    
-    return {"message": "User created successfully"}
+    try:
+        # 역할 유효성 검사
+        if user.role not in ["mentor", "mentee"]:
+            raise HTTPException(status_code=400, detail="Invalid role. Must be 'mentor' or 'mentee'")
+        
+        # 이메일 중복 확인
+        if db.query(User).filter(User.email == user.email).first():
+            raise HTTPException(status_code=400, detail="Email already registered")
+        
+        # 비밀번호 해싱
+        hashed_password = get_password_hash(user.password)
+        
+        # 사용자 생성
+        db_user = User(
+            email=user.email,
+            hashed_password=hashed_password,
+            name=user.name,
+            role=user.role
+        )
+        db.add(db_user)
+        db.commit()
+        db.refresh(db_user)
+        
+        return {"message": "User created successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.post("/api/login")
 def login(user: UserLogin, db: Session = Depends(get_db)):
-    # 사용자 확인
-    db_user = db.query(User).filter(User.email == user.email).first()
-    if not db_user or not verify_password(user.password, db_user.hashed_password):
-        raise HTTPException(status_code=401, detail="Incorrect email or password")
-    
-    # JWT 토큰 생성
-    access_token = create_access_token({
-        "user_id": db_user.id,
-        "email": db_user.email,
-        "name": db_user.name,
-        "role": db_user.role
-    })
-    
-    return {"token": access_token}
+    try:
+        # 사용자 확인
+        db_user = db.query(User).filter(User.email == user.email).first()
+        if not db_user or not verify_password(user.password, db_user.hashed_password):
+            raise HTTPException(status_code=401, detail="Incorrect email or password")
+        
+        # JWT 토큰 생성
+        access_token = create_access_token({
+            "user_id": db_user.id,
+            "email": db_user.email,
+            "name": db_user.name,
+            "role": db_user.role
+        })
+        
+        return {"token": access_token}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal server error")
 
-# 2. 사용자 정보 엔드포인트들
-@app.get("/api/me")
-def get_current_user_info(current_user: User = Depends(get_current_user)):
+# 사용자 정보 반환 헬퍼 함수
+def get_current_user_info(user: User):
+    """사용자 정보를 API 명세서 형식으로 반환"""
     profile_data = {
-        "name": current_user.name,
-        "bio": current_user.bio,
-        "imageUrl": f"/api/images/{current_user.role}/{current_user.id}"
+        "name": user.name,
+        "bio": user.bio,
+        "imageUrl": f"/api/images/{user.role}/{user.id}"
     }
     
-    if current_user.role == "mentor":
-        skills = []
-        if current_user.skills:
-            try:
-                skills = json.loads(current_user.skills)
-            except:
-                skills = []
-        profile_data["skills"] = skills
+    # 멘토인 경우 기술스택 추가
+    if user.role == "mentor" and user.skills:
+        try:
+            skills = json.loads(user.skills)
+            profile_data["skills"] = skills
+        except:
+            profile_data["skills"] = []
     
     return {
-        "id": current_user.id,
-        "email": current_user.email,
-        "role": current_user.role,
+        "id": user.id,
+        "email": user.email,
+        "role": user.role,
         "profile": profile_data
     }
 
-@app.get("/api/images/{role}/{user_id}")
-def get_profile_image(role: str, user_id: int, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    # 프로필 이미지가 있으면 반환, 없으면 기본 이미지 URL로 리다이렉트
-    if user.profile_image:
-        # 실제 구현에서는 임시 파일로 저장 후 반환
-        import tempfile
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
-            tmp.write(user.profile_image)
-            tmp.flush()
-            return FileResponse(tmp.name, media_type="image/jpeg")
-    else:
-        # 기본 이미지로 리다이렉트
-        if role == "mentor":
-            return RedirectResponse("https://placehold.co/500x500.jpg?text=MENTOR")
-        else:
-            return RedirectResponse("https://placehold.co/500x500.jpg?text=MENTEE")
+# 2. 사용자 정보 엔드포인트들
+@app.get("/api/me")
+def get_me(current_user: User = Depends(get_current_user)):
+    """API 명세서 호환성을 위한 /me 엔드포인트"""
+    try:
+        return get_current_user_info(current_user)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.get("/api/profile")
 def get_profile(current_user: User = Depends(get_current_user)):
-    return get_current_user_info(current_user)
+    try:
+        return get_current_user_info(current_user)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@app.get("/api/images/{role}/{user_id}")
+def get_profile_image(role: str, user_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # 프로필 이미지가 있으면 반환, 없으면 기본 이미지 URL로 리다이렉트
+        if user.profile_image:
+            # 실제 구현에서는 임시 파일로 저장 후 반환
+            import tempfile
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
+                tmp.write(user.profile_image)
+                tmp.flush()
+                return FileResponse(tmp.name, media_type="image/jpeg")
+        else:
+            # 기본 이미지로 리다이렉트
+            if role == "mentor":
+                return RedirectResponse("https://placehold.co/500x500.jpg?text=MENTOR", status_code=302)
+            else:
+                return RedirectResponse("https://placehold.co/500x500.jpg?text=MENTEE", status_code=302)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.put("/api/profile")
 def update_profile(profile: UserProfile, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    # 프로필 업데이트
-    current_user.name = profile.name
-    current_user.bio = profile.bio
-    
-    if profile.image:
-        try:
-            # Base64 이미지 디코딩
-            image_data = base64.b64decode(profile.image)
-            current_user.profile_image = image_data
-        except:
-            raise HTTPException(status_code=400, detail="Invalid image format")
-    
-    if current_user.role == "mentor" and profile.skills:
-        current_user.skills = json.dumps(profile.skills)
-    
-    db.commit()
-    
-    # 업데이트된 정보 반환
-    return get_current_user_info(current_user)
+    try:
+        # 프로필 업데이트
+        current_user.name = profile.name
+        current_user.bio = profile.bio
+        
+        if profile.image:
+            try:
+                # Base64 이미지 디코딩
+                image_data = base64.b64decode(profile.image)
+                current_user.profile_image = image_data
+            except:
+                raise HTTPException(status_code=400, detail="Invalid image format")
+        
+        if current_user.role == "mentor" and profile.skills:
+            current_user.skills = json.dumps(profile.skills)
+        
+        db.commit()
+        
+        # 업데이트된 정보 반환
+        return get_current_user_info(current_user)
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 # 3. 멘토 리스트 조회
 @app.get("/api/mentors")
 def get_mentors(skill: Optional[str] = None, order_by: Optional[str] = None, 
                 current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if current_user.role != "mentee":
-        raise HTTPException(status_code=403, detail="Only mentees can access this endpoint")
-    
-    query = db.query(User).filter(User.role == "mentor")
-    
-    # 스킬 필터링
-    if skill:
-        query = query.filter(User.skills.contains(skill.lower()))
-    
-    mentors = query.all()
-    
-    # 정렬
-    if order_by == "name":
-        mentors.sort(key=lambda x: x.name)
-    elif order_by == "skill":
-        # 스킬 기준 정렬 (첫 번째 스킬 기준)
-        def get_first_skill(user):
-            try:
-                skills = json.loads(user.skills) if user.skills else []
-                return skills[0] if skills else ""
-            except:
-                return ""
-        mentors.sort(key=get_first_skill)
-    else:
-        mentors.sort(key=lambda x: x.id)
-    
-    result = []
-    for mentor in mentors:
-        skills = []
-        if mentor.skills:
-            try:
-                skills = json.loads(mentor.skills)
-            except:
-                skills = []
+    try:
+        if current_user.role != "mentee":
+            raise HTTPException(status_code=403, detail="Only mentees can access this endpoint")
         
-        result.append({
-            "id": mentor.id,
-            "email": mentor.email,
-            "role": mentor.role,
-            "profile": {
-                "name": mentor.name,
-                "bio": mentor.bio,
-                "imageUrl": f"/api/images/mentor/{mentor.id}",
-                "skills": skills
-            }
-        })
-    
-    return result
+        query = db.query(User).filter(User.role == "mentor")
+        
+        # 스킬 필터링
+        if skill:
+            query = query.filter(User.skills.contains(skill.lower()))
+        
+        mentors = query.all()
+        
+        # 정렬
+        if order_by == "name":
+            mentors.sort(key=lambda x: x.name)
+        elif order_by == "skill":
+            # 스킬 기준 정렬 (첫 번째 스킬 기준)
+            def get_first_skill(user):
+                try:
+                    skills = json.loads(user.skills) if user.skills else []
+                    return skills[0] if skills else ""
+                except:
+                    return ""
+            mentors.sort(key=get_first_skill)
+        else:
+            mentors.sort(key=lambda x: x.id)
+        
+        result = []
+        for mentor in mentors:
+            skills = []
+            if mentor.skills:
+                try:
+                    skills = json.loads(mentor.skills)
+                except:
+                    skills = []
+            
+            result.append({
+                "id": mentor.id,
+                "email": mentor.email,
+                "role": mentor.role,
+                "profile": {
+                    "name": mentor.name,
+                    "bio": mentor.bio,
+                    "imageUrl": f"/api/images/mentor/{mentor.id}",
+                    "skills": skills
+                }
+            })
+        
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 # 4. 매칭 요청 엔드포인트들
 @app.post("/api/match-requests")
 def create_match_request(request: MatchRequestCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if current_user.role != "mentee":
-        raise HTTPException(status_code=403, detail="Only mentees can send requests")
-    
-    # 멘토 존재 확인
-    mentor = db.query(User).filter(User.id == request.mentorId, User.role == "mentor").first()
-    if not mentor:
-        raise HTTPException(status_code=400, detail="Mentor not found")
-    
-    # 이미 요청이 있는지 확인
-    existing_request = db.query(MatchRequest).filter(
-        MatchRequest.mentor_id == request.mentorId,
-        MatchRequest.mentee_id == current_user.id,
-        MatchRequest.status.in_(["pending", "accepted"])
-    ).first()
-    
-    if existing_request:
-        raise HTTPException(status_code=400, detail="Request already exists")
-    
-    # 요청 생성
-    match_request = MatchRequest(
-        mentor_id=request.mentorId,
-        mentee_id=current_user.id,
-        message=request.message
-    )
-    db.add(match_request)
-    db.commit()
-    db.refresh(match_request)
-    
-    return {
-        "id": match_request.id,
-        "mentorId": match_request.mentor_id,
-        "menteeId": match_request.mentee_id,
-        "message": match_request.message,
-        "status": match_request.status
-    }
+    try:
+        if current_user.role != "mentee":
+            raise HTTPException(status_code=403, detail="Only mentees can send requests")
+        
+        # 멘토 존재 확인
+        mentor = db.query(User).filter(User.id == request.mentorId, User.role == "mentor").first()
+        if not mentor:
+            raise HTTPException(status_code=400, detail="Mentor not found")
+        
+        # 이미 요청이 있는지 확인 (cancelled 상태 제외)
+        existing_request = db.query(MatchRequest).filter(
+            MatchRequest.mentor_id == request.mentorId,
+            MatchRequest.mentee_id == current_user.id,
+            MatchRequest.status.in_(["pending", "accepted"])
+        ).first()
+        
+        if existing_request:
+            raise HTTPException(status_code=400, detail="Request already exists")
+        
+        # 요청 생성
+        match_request = MatchRequest(
+            mentor_id=request.mentorId,
+            mentee_id=current_user.id,
+            message=request.message
+        )
+        db.add(match_request)
+        db.commit()
+        db.refresh(match_request)
+        
+        return {
+            "id": match_request.id,
+            "mentorId": match_request.mentor_id,
+            "menteeId": match_request.mentee_id,
+            "message": match_request.message,
+            "status": match_request.status
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.get("/api/match-requests/incoming")
 def get_incoming_requests(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if current_user.role != "mentor":
-        raise HTTPException(status_code=403, detail="Only mentors can access this endpoint")
-    
-    requests = db.query(MatchRequest).filter(MatchRequest.mentor_id == current_user.id).all()
-    
-    result = []
-    for req in requests:
-        result.append({
-            "id": req.id,
-            "mentorId": req.mentor_id,
-            "menteeId": req.mentee_id,
-            "message": req.message,
-            "status": req.status
-        })
-    
-    return result
+    try:
+        if current_user.role != "mentor":
+            raise HTTPException(status_code=403, detail="Only mentors can access this endpoint")
+        
+        requests = db.query(MatchRequest).filter(MatchRequest.mentor_id == current_user.id).all()
+        
+        result = []
+        for req in requests:
+            result.append({
+                "id": req.id,
+                "mentorId": req.mentor_id,
+                "menteeId": req.mentee_id,
+                "message": req.message,
+                "status": req.status
+            })
+        
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.get("/api/match-requests/outgoing")
 def get_outgoing_requests(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if current_user.role != "mentee":
-        raise HTTPException(status_code=403, detail="Only mentees can access this endpoint")
-    
-    requests = db.query(MatchRequest).filter(MatchRequest.mentee_id == current_user.id).all()
-    
-    result = []
-    for req in requests:
-        result.append({
-            "id": req.id,
-            "mentorId": req.mentor_id,
-            "menteeId": req.mentee_id,
-            "status": req.status
-        })
-    
-    return result
+    try:
+        if current_user.role != "mentee":
+            raise HTTPException(status_code=403, detail="Only mentees can access this endpoint")
+        
+        requests = db.query(MatchRequest).filter(MatchRequest.mentee_id == current_user.id).all()
+        
+        result = []
+        for req in requests:
+            result.append({
+                "id": req.id,
+                "mentorId": req.mentor_id,
+                "menteeId": req.mentee_id,
+                "status": req.status
+            })
+        
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.put("/api/match-requests/{request_id}/accept")
 def accept_match_request(request_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if current_user.role != "mentor":
-        raise HTTPException(status_code=403, detail="Only mentors can accept requests")
-    
-    match_request = db.query(MatchRequest).filter(
-        MatchRequest.id == request_id,
-        MatchRequest.mentor_id == current_user.id
-    ).first()
-    
-    if not match_request:
-        raise HTTPException(status_code=404, detail="Match request not found")
-    
-    # 다른 요청들을 거절 처리
-    other_requests = db.query(MatchRequest).filter(
-        MatchRequest.mentor_id == current_user.id,
-        MatchRequest.status == "pending",
-        MatchRequest.id != request_id
-    ).all()
-    
-    for req in other_requests:
-        req.status = "rejected"
-    
-    match_request.status = "accepted"
-    db.commit()
-    
-    return {
-        "id": match_request.id,
-        "mentorId": match_request.mentor_id,
-        "menteeId": match_request.mentee_id,
-        "message": match_request.message,
-        "status": match_request.status
-    }
+    try:
+        if current_user.role != "mentor":
+            raise HTTPException(status_code=403, detail="Only mentors can accept requests")
+        
+        match_request = db.query(MatchRequest).filter(
+            MatchRequest.id == request_id,
+            MatchRequest.mentor_id == current_user.id
+        ).first()
+        
+        if not match_request:
+            raise HTTPException(status_code=404, detail="Match request not found")
+        
+        # 다른 요청들을 거절 처리
+        other_requests = db.query(MatchRequest).filter(
+            MatchRequest.mentor_id == current_user.id,
+            MatchRequest.status == "pending",
+            MatchRequest.id != request_id
+        ).all()
+        
+        for req in other_requests:
+            req.status = "rejected"
+        
+        match_request.status = "accepted"
+        db.commit()
+        
+        return {
+            "id": match_request.id,
+            "mentorId": match_request.mentor_id,
+            "menteeId": match_request.mentee_id,
+            "message": match_request.message,
+            "status": match_request.status
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.put("/api/match-requests/{request_id}/reject")
 def reject_match_request(request_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if current_user.role != "mentor":
-        raise HTTPException(status_code=403, detail="Only mentors can reject requests")
-    
-    match_request = db.query(MatchRequest).filter(
-        MatchRequest.id == request_id,
-        MatchRequest.mentor_id == current_user.id
-    ).first()
-    
-    if not match_request:
-        raise HTTPException(status_code=404, detail="Match request not found")
-    
-    match_request.status = "rejected"
-    db.commit()
-    
-    return {
-        "id": match_request.id,
-        "mentorId": match_request.mentor_id,
-        "menteeId": match_request.mentee_id,
-        "message": match_request.message,
-        "status": match_request.status
-    }
+    try:
+        if current_user.role != "mentor":
+            raise HTTPException(status_code=403, detail="Only mentors can reject requests")
+        
+        match_request = db.query(MatchRequest).filter(
+            MatchRequest.id == request_id,
+            MatchRequest.mentor_id == current_user.id
+        ).first()
+        
+        if not match_request:
+            raise HTTPException(status_code=404, detail="Match request not found")
+        
+        match_request.status = "rejected"
+        db.commit()
+        
+        return {
+            "id": match_request.id,
+            "mentorId": match_request.mentor_id,
+            "menteeId": match_request.mentee_id,
+            "message": match_request.message,
+            "status": match_request.status
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.delete("/api/match-requests/{request_id}")
 def cancel_match_request(request_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if current_user.role != "mentee":
-        raise HTTPException(status_code=403, detail="Only mentees can cancel requests")
-    
-    match_request = db.query(MatchRequest).filter(
-        MatchRequest.id == request_id,
-        MatchRequest.mentee_id == current_user.id
-    ).first()
-    
-    if not match_request:
-        raise HTTPException(status_code=404, detail="Match request not found")
-    
-    match_request.status = "cancelled"
-    db.commit()
-    
-    return {
-        "id": match_request.id,
-        "mentorId": match_request.mentor_id,
-        "menteeId": match_request.mentee_id,
-        "message": match_request.message,
-        "status": match_request.status
-    }
+    try:
+        if current_user.role != "mentee":
+            raise HTTPException(status_code=403, detail="Only mentees can cancel requests")
+        
+        match_request = db.query(MatchRequest).filter(
+            MatchRequest.id == request_id,
+            MatchRequest.mentee_id == current_user.id
+        ).first()
+        
+        if not match_request:
+            raise HTTPException(status_code=404, detail="Match request not found")
+        
+        match_request.status = "cancelled"
+        db.commit()
+        
+        return {
+            "id": match_request.id,
+            "mentorId": match_request.mentor_id,
+            "menteeId": match_request.mentee_id,
+            "message": match_request.message,
+            "status": match_request.status
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 if __name__ == "__main__":
     import uvicorn
