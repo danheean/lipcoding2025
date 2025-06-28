@@ -53,9 +53,14 @@ const AuthProvider = ({ children }) => {
       localStorage.setItem('token', token)
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
       
-      await fetchUserInfo()
+      // 토큰 설정 후 사용자 정보 가져오기
+      setTimeout(async () => {
+        await fetchUserInfo()
+      }, 100)
+      
       return { success: true }
     } catch (error) {
+      console.error('Login error:', error)
       return { 
         success: false, 
         error: error.response?.data?.detail || 'Login failed' 

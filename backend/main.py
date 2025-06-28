@@ -120,17 +120,22 @@ def get_password_hash(password):
 
 def create_access_token(data: dict):
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
+    now = datetime.utcnow()
+    expire = now + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
     
     # RFC 7519 클레임 추가
     to_encode.update({
         "iss": "mentor-mentee-app",  # issuer
         "sub": str(data.get("user_id")),  # subject (user ID)
         "aud": "mentor-mentee-client",  # audience
-        "exp": expire,  # expiration time
-        "nbf": datetime.utcnow(),  # not before
-        "iat": datetime.utcnow(),  # issued at
+        "exp": expire,  # expiration time (keep as datetime for python-jose)
+        "nbf": now,  # not before
+        "iat": now,  # issued at
         "jti": str(uuid.uuid4()),  # JWT ID
+        # 추가 사용자 정보
+        "email": data.get("email"),
+        "name": data.get("name"),
+        "role": data.get("role")
     })
     
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
@@ -149,13 +154,17 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
         user_id: str = payload.get("sub")
         if user_id is None:
             raise credentials_exception
-    except JWTError:
+    except JWTError as e:
+        print(f"JWT Error: {e}")
         raise credentials_exception
     
-    user = db.query(User).filter(User.id == int(user_id)).first()
-    if user is None:
+    try:
+        user = db.query(User).filter(User.id == int(user_id)).first()
+        if user is None:
+            raise credentials_exception
+        return user
+    except ValueError:
         raise credentials_exception
-    return user
 
 # API 엔드포인트들
 
@@ -163,6 +172,20 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
 @app.get("/")
 async def root():
     return RedirectResponse(url="/docs")
+
+# 간단한 테스트 엔드포인트
+@app.get("/api/test")
+def test_endpoint():
+    return {"message": "API is working!", "timestamp": datetime.utcnow()}
+
+@app.get("/api/test-auth")
+def test_auth_endpoint(current_user: User = Depends(get_current_user)):
+    return {
+        "message": "Authentication is working!",
+        "user_id": current_user.id,
+        "email": current_user.email,
+        "role": current_user.role
+    }
 
 # 1. 인증 엔드포인트들
 @app.post("/api/signup", status_code=201)
