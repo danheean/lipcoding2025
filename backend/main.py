@@ -150,7 +150,13 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
     
     try:
         token = credentials.credentials
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(
+            token, 
+            SECRET_KEY, 
+            algorithms=[ALGORITHM],
+            audience="mentor-mentee-client",
+            issuer="mentor-mentee-app"
+        )
         user_id: str = payload.get("sub")
         if user_id is None:
             raise credentials_exception
@@ -272,6 +278,10 @@ def get_profile_image(role: str, user_id: int, db: Session = Depends(get_db)):
             return RedirectResponse("https://placehold.co/500x500.jpg?text=MENTOR")
         else:
             return RedirectResponse("https://placehold.co/500x500.jpg?text=MENTEE")
+
+@app.get("/api/profile")
+def get_profile(current_user: User = Depends(get_current_user)):
+    return get_current_user_info(current_user)
 
 @app.put("/api/profile")
 def update_profile(profile: UserProfile, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
