@@ -1,6 +1,7 @@
 import React, { useState, useEffect, createContext, useContext } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate, Link, useNavigate } from 'react-router-dom'
 import axios from 'axios'
+import Calendar from './Calendar'
 
 // API 기본 설정
 const API_BASE = 'http://localhost:8080/api'
@@ -438,6 +439,9 @@ const Profile = () => {
 
   return (
     <div className="container">
+      {/* 캘린더 섹션 - 로그인 후 첫 화면 */}
+      <Calendar user={user} />
+      
       <div className="card">
         <h2 className="mb-4">프로필 관리</h2>
         

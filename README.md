@@ -12,20 +12,54 @@
 
 ## 🚀 빠른 시작
 
-### 백엔드 실행
+### 🎯 전체 시스템 한 번에 시작 (권장)
+```bash
+# 전체 시스템 백그라운드 시작
+chmod +x start.sh
+./start.sh
+```
+
+### 🛑 전체 시스템 종료
+```bash
+# 전체 시스템 종료
+chmod +x stop.sh
+./stop.sh
+```
+
+### 📊 접속 정보
+- **애플리케이션**: http://localhost:3000
+- **API 문서**: http://localhost:8080/docs
+- **API 기본 URL**: http://localhost:8080/api
+
+### 🔧 개별 서버 실행 (개발용)
+
+#### 백엔드 백그라운드 실행
 ```bash
 cd backend
-python main.py
+chmod +x start.sh
+./start.sh
 ```
-**서버**: http://localhost:8080
 
-### 프론트엔드 실행
+#### 프론트엔드 백그라운드 실행
 ```bash
 cd frontend
-npm install
-npm run dev
+chmod +x start.sh
+./start.sh
 ```
-**애플리케이션**: http://localhost:3000
+
+#### 🛑 개별 서버 종료
+```bash
+# 백엔드 종료
+pkill -f "python main.py"
+
+# 프론트엔드 종료
+pkill -f "npm run dev"
+```
+
+#### 🔍 실행 중인 프로세스 확인
+```bash
+ps aux | grep -E "(python main.py|npm run dev|vite)"
+```
 
 ---
 

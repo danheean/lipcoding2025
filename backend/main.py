@@ -57,6 +57,23 @@ class MatchRequestCreate(BaseModel):
     mentorId: int
     message: str
 
+class MeetingCreate(BaseModel):
+    mentorId: int
+    menteeId: int
+    title: str
+    description: Optional[str] = ""
+    startTime: datetime
+    endTime: datetime
+    meetingLink: Optional[str] = ""
+
+class MeetingUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    startTime: Optional[datetime] = None
+    endTime: Optional[datetime] = None
+    status: Optional[str] = None
+    meetingLink: Optional[str] = None
+
 # SQLAlchemy 모델들
 class User(Base):
     __tablename__ = "users"
@@ -80,6 +97,21 @@ class MatchRequest(Base):
     message = Column(Text)
     status = Column(String, default="pending")  # pending, accepted, rejected, cancelled
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class Meeting(Base):
+    __tablename__ = "meetings"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    mentor_id = Column(Integer)
+    mentee_id = Column(Integer)
+    title = Column(String)
+    description = Column(Text)
+    start_time = Column(DateTime)
+    end_time = Column(DateTime)
+    status = Column(String, default="scheduled")  # scheduled, completed, cancelled
+    meeting_link = Column(String)  # Zoom, Google Meet 등 링크
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 # 데이터베이스 테이블 생성
 Base.metadata.create_all(bind=engine)
@@ -588,6 +620,219 @@ def cancel_match_request(request_id: int, current_user: User = Depends(get_curre
             "message": match_request.message,
             "status": match_request.status
         }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+# ========================
+# 미팅 관리 API
+# ========================
+
+@app.post("/api/meetings")
+def create_meeting(meeting: MeetingCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    try:
+        # 멘토만 미팅을 생성할 수 있거나, 본인 관련 미팅만 생성 가능
+        if current_user.role == "mentor" and meeting.mentorId != current_user.id:
+            raise HTTPException(status_code=403, detail="Can only create meetings for yourself")
+        elif current_user.role == "mentee" and meeting.menteeId != current_user.id:
+            raise HTTPException(status_code=403, detail="Can only create meetings for yourself")
+        
+        # 시간 충돌 확인
+        existing_meeting = db.query(Meeting).filter(
+            ((Meeting.mentor_id == meeting.mentorId) | (Meeting.mentee_id == meeting.menteeId)),
+            Meeting.status == "scheduled",
+            ((Meeting.start_time <= meeting.startTime) & (Meeting.end_time > meeting.startTime)) |
+            ((Meeting.start_time < meeting.endTime) & (Meeting.end_time >= meeting.endTime)) |
+            ((Meeting.start_time >= meeting.startTime) & (Meeting.end_time <= meeting.endTime))
+        ).first()
+        
+        if existing_meeting:
+            raise HTTPException(status_code=400, detail="Time slot conflicts with existing meeting")
+        
+        db_meeting = Meeting(
+            mentor_id=meeting.mentorId,
+            mentee_id=meeting.menteeId,
+            title=meeting.title,
+            description=meeting.description,
+            start_time=meeting.startTime,
+            end_time=meeting.endTime,
+            meeting_link=meeting.meetingLink
+        )
+        
+        db.add(db_meeting)
+        db.commit()
+        db.refresh(db_meeting)
+        
+        return {
+            "id": db_meeting.id,
+            "mentorId": db_meeting.mentor_id,
+            "menteeId": db_meeting.mentee_id,
+            "title": db_meeting.title,
+            "description": db_meeting.description,
+            "startTime": db_meeting.start_time.isoformat(),
+            "endTime": db_meeting.end_time.isoformat(),
+            "status": db_meeting.status,
+            "meetingLink": db_meeting.meeting_link,
+            "createdAt": db_meeting.created_at.isoformat()
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@app.get("/api/meetings")
+def get_meetings(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    try:
+        meetings = db.query(Meeting).filter(
+            (Meeting.mentor_id == current_user.id) | (Meeting.mentee_id == current_user.id)
+        ).order_by(Meeting.start_time.desc()).all()
+        
+        result = []
+        for meeting in meetings:
+            # 상대방 정보 가져오기
+            if meeting.mentor_id == current_user.id:
+                other_user = db.query(User).filter(User.id == meeting.mentee_id).first()
+                other_role = "mentee"
+            else:
+                other_user = db.query(User).filter(User.id == meeting.mentor_id).first()
+                other_role = "mentor"
+            
+            result.append({
+                "id": meeting.id,
+                "mentorId": meeting.mentor_id,
+                "menteeId": meeting.mentee_id,
+                "title": meeting.title,
+                "description": meeting.description,
+                "startTime": meeting.start_time.isoformat(),
+                "endTime": meeting.end_time.isoformat(),
+                "status": meeting.status,
+                "meetingLink": meeting.meeting_link,
+                "createdAt": meeting.created_at.isoformat(),
+                "otherUser": {
+                    "id": other_user.id if other_user else None,
+                    "name": other_user.name if other_user else "Unknown",
+                    "email": other_user.email if other_user else "",
+                    "role": other_role
+                }
+            })
+        
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@app.get("/api/meetings/calendar/{year}/{month}")
+def get_calendar_meetings(year: int, month: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    try:
+        from calendar import monthrange
+        import calendar
+        
+        # 해당 월의 첫날과 마지막날 계산
+        first_day = datetime(year, month, 1)
+        last_day_num = monthrange(year, month)[1]
+        last_day = datetime(year, month, last_day_num, 23, 59, 59)
+        
+        meetings = db.query(Meeting).filter(
+            (Meeting.mentor_id == current_user.id) | (Meeting.mentee_id == current_user.id),
+            Meeting.start_time >= first_day,
+            Meeting.start_time <= last_day
+        ).order_by(Meeting.start_time).all()
+        
+        # 날짜별로 미팅 그룹화
+        calendar_data = {}
+        for meeting in meetings:
+            date_key = meeting.start_time.strftime('%Y-%m-%d')
+            if date_key not in calendar_data:
+                calendar_data[date_key] = []
+            
+            # 상대방 정보 가져오기
+            if meeting.mentor_id == current_user.id:
+                other_user = db.query(User).filter(User.id == meeting.mentee_id).first()
+                other_role = "mentee"
+            else:
+                other_user = db.query(User).filter(User.id == meeting.mentor_id).first()
+                other_role = "mentor"
+            
+            calendar_data[date_key].append({
+                "id": meeting.id,
+                "title": meeting.title,
+                "startTime": meeting.start_time.strftime('%H:%M'),
+                "endTime": meeting.end_time.strftime('%H:%M'),
+                "status": meeting.status,
+                "otherUser": {
+                    "name": other_user.name if other_user else "Unknown",
+                    "role": other_role
+                }
+            })
+        
+        return calendar_data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@app.put("/api/meetings/{meeting_id}")
+def update_meeting(meeting_id: int, meeting_update: MeetingUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    try:
+        meeting = db.query(Meeting).filter(
+            Meeting.id == meeting_id,
+            (Meeting.mentor_id == current_user.id) | (Meeting.mentee_id == current_user.id)
+        ).first()
+        
+        if not meeting:
+            raise HTTPException(status_code=404, detail="Meeting not found")
+        
+        # 업데이트할 필드들 적용
+        if meeting_update.title is not None:
+            meeting.title = meeting_update.title
+        if meeting_update.description is not None:
+            meeting.description = meeting_update.description
+        if meeting_update.startTime is not None:
+            meeting.start_time = meeting_update.startTime
+        if meeting_update.endTime is not None:
+            meeting.end_time = meeting_update.endTime
+        if meeting_update.status is not None:
+            meeting.status = meeting_update.status
+        if meeting_update.meetingLink is not None:
+            meeting.meeting_link = meeting_update.meetingLink
+        
+        meeting.updated_at = datetime.utcnow()
+        
+        db.commit()
+        
+        return {
+            "id": meeting.id,
+            "mentorId": meeting.mentor_id,
+            "menteeId": meeting.mentee_id,
+            "title": meeting.title,
+            "description": meeting.description,
+            "startTime": meeting.start_time.isoformat(),
+            "endTime": meeting.end_time.isoformat(),
+            "status": meeting.status,
+            "meetingLink": meeting.meeting_link,
+            "updatedAt": meeting.updated_at.isoformat()
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@app.delete("/api/meetings/{meeting_id}")
+def delete_meeting(meeting_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    try:
+        meeting = db.query(Meeting).filter(
+            Meeting.id == meeting_id,
+            (Meeting.mentor_id == current_user.id) | (Meeting.mentee_id == current_user.id)
+        ).first()
+        
+        if not meeting:
+            raise HTTPException(status_code=404, detail="Meeting not found")
+        
+        db.delete(meeting)
+        db.commit()
+        
+        return {"message": "Meeting deleted successfully"}
     except HTTPException:
         raise
     except Exception as e:
