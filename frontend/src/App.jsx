@@ -7,6 +7,66 @@ import Calendar from './Calendar'
 const API_BASE = 'http://localhost:8080/api'
 axios.defaults.baseURL = API_BASE
 
+// 모바일 감지 유틸리티
+const isMobile = () => {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+         window.innerWidth <= 768
+}
+
+// 터치 제스처 훅
+const useTouch = (onSwipeLeft, onSwipeRight) => {
+  const [touchStart, setTouchStart] = useState(null)
+  const [touchEnd, setTouchEnd] = useState(null)
+
+  const minSwipeDistance = 50
+
+  const onTouchStart = (e) => {
+    setTouchEnd(null)
+    setTouchStart(e.targetTouches[0].clientX)
+  }
+
+  const onTouchMove = (e) => {
+    setTouchEnd(e.targetTouches[0].clientX)
+  }
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return
+    const distance = touchStart - touchEnd
+    const isLeftSwipe = distance > minSwipeDistance
+    const isRightSwipe = distance < -minSwipeDistance
+
+    if (isLeftSwipe && onSwipeLeft) {
+      onSwipeLeft()
+    }
+    if (isRightSwipe && onSwipeRight) {
+      onSwipeRight()
+    }
+  }
+
+  return {
+    onTouchStart,
+    onTouchMove,
+    onTouchEnd
+  }
+}
+
+// 반응형 훅
+const useResponsive = () => {
+  const [isMobileView, setIsMobileView] = useState(false)
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobileView(window.innerWidth <= 768)
+    }
+
+    handleResize()
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  return isMobileView
+}
+
 // Context for authentication
 const AuthContext = createContext()
 
@@ -108,10 +168,20 @@ const Navbar = () => {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [iconMode, setIconMode] = useState(false)
+  const isMobileView = useResponsive()
+
+  // 모바일에서는 기본적으로 아이콘 모드
+  useEffect(() => {
+    if (isMobileView) {
+      setIconMode(true)
+    }
+  }, [isMobileView])
 
   const handleLogout = () => {
-    logout()
-    navigate('/')
+    if (window.confirm('정말 로그아웃하시겠습니까?')) {
+      logout()
+      navigate('/')
+    }
   }
 
   if (!user) return null
@@ -137,37 +207,60 @@ const Navbar = () => {
   return (
     <nav className={`navbar navbar-${config.color} ${iconMode ? 'navbar-icon-mode' : ''}`}>
       <div className="navbar-content">
-        <Link to="/" className="navbar-brand" title="RiseWith - 함께 성장하는 플랫폼">
+        <Link 
+          to="/" 
+          className="navbar-brand clickable touchable" 
+          title="RiseWith - 함께 성장하는 플랫폼"
+        >
           <span className="brand-icon">{config.brandIcon}</span>
           {!iconMode && <span className="brand-text">{config.brandText}</span>}
         </Link>
         
-        <div className="navbar-controls">
-          <button 
-            onClick={() => setIconMode(!iconMode)} 
-            className="icon-toggle-btn"
-            title={iconMode ? "텍스트 표시" : "아이콘만 표시"}
-          >
-            {iconMode ? '📝' : '🎯'}
-          </button>
-        </div>
+        {/* 모바일에서는 아이콘 토글 버튼 숨김 */}
+        {!isMobileView && (
+          <div className="navbar-controls">
+            <button 
+              onClick={() => setIconMode(!iconMode)} 
+              className="icon-toggle-btn clickable touchable"
+              title={iconMode ? "텍스트 표시" : "아이콘만 표시"}
+            >
+              {iconMode ? '📝' : '🎯'}
+            </button>
+          </div>
+        )}
 
         <div className="navbar-nav">
-          <Link to="/profile" title="프로필">
+          <Link 
+            to="/profile" 
+            title="프로필"
+            className="clickable touchable"
+          >
             <span className="nav-icon">{config.profileIcon}</span>
             {!iconMode && <span className="nav-text">프로필</span>}
           </Link>
           {user.role === 'mentee' && (
-            <Link to="/mentors" title="멘토 찾기">
+            <Link 
+              to="/mentors" 
+              title="멘토 찾기"
+              className="clickable touchable"
+            >
               <span className="nav-icon">🔍</span>
               {!iconMode && <span className="nav-text">멘토 찾기</span>}
             </Link>
           )}
-          <Link to="/requests" title={user.role === 'mentor' ? '받은 요청' : '보낸 요청'}>
+          <Link 
+            to="/requests" 
+            title={user.role === 'mentor' ? '받은 요청' : '보낸 요청'}
+            className="clickable touchable"
+          >
             <span className="nav-icon">{user.role === 'mentor' ? '📥' : '📤'}</span>
             {!iconMode && <span className="nav-text">{user.role === 'mentor' ? '받은 요청' : '보낸 요청'}</span>}
           </Link>
-          <button onClick={handleLogout} className="btn btn-secondary logout-btn" title="로그아웃">
+          <button 
+            onClick={handleLogout} 
+            className="btn btn-secondary logout-btn clickable touchable" 
+            title="로그아웃"
+          >
             <span className="nav-icon">🚪</span>
             {!iconMode && <span className="nav-text">로그아웃</span>}
           </button>
@@ -957,6 +1050,66 @@ const Requests = () => {
   )
 }
 
+// 모바일 친화적 로딩 스피너
+const LoadingSpinner = ({ message = "로딩 중..." }) => (
+  <div className="loading-container">
+    <div className="loading-spinner">
+      <div className="spinner-ring"></div>
+      <div className="spinner-ring"></div>
+      <div className="spinner-ring"></div>
+    </div>
+    <p className="loading-message">{message}</p>
+  </div>
+)
+
+// 터치 친화적 버튼 컴포넌트
+const TouchButton = ({ children, className = '', onClick, disabled, ...props }) => (
+  <button
+    className={`btn touchable clickable ${className}`}
+    onClick={onClick}
+    disabled={disabled}
+    {...props}
+  >
+    {children}
+  </button>
+)
+
+// 모바일 친화적 카드 컴포넌트
+const MobileCard = ({ children, className = '', onSwipeLeft, onSwipeRight, ...props }) => {
+  const touchHandlers = useTouch(onSwipeLeft, onSwipeRight)
+  
+  return (
+    <div
+      className={`card touchable ${className}`}
+      {...touchHandlers}
+      {...props}
+    >
+      {children}
+    </div>
+  )
+}
+
+// 풀 스크린 모달 (모바일용)
+const MobileModal = ({ isOpen, onClose, title, children }) => {
+  if (!isOpen) return null
+
+  return (
+    <div className="mobile-modal-overlay" onClick={onClose}>
+      <div className="mobile-modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="mobile-modal-header">
+          <h3>{title}</h3>
+          <button className="mobile-modal-close" onClick={onClose}>
+            ✕
+          </button>
+        </div>
+        <div className="mobile-modal-body scrollable">
+          {children}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth()
@@ -975,25 +1128,26 @@ const ProtectedRoute = ({ children }) => {
 // Home Component
 const Home = () => {
   const { user } = useAuth()
+  const isMobileView = useResponsive()
 
   if (user) {
     return <Navigate to="/profile" />
   }
 
   return (
-    <div className="container" style={{ marginTop: '50px' }}>
+    <div className="container" style={{ marginTop: isMobileView ? '20px' : '50px' }}>
       <div className="text-center">
         <div style={{ 
           textAlign: 'center', 
-          marginBottom: '50px',
-          padding: '40px 20px',
+          marginBottom: isMobileView ? '30px' : '50px',
+          padding: isMobileView ? '24px 16px' : '40px 20px',
           background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
-          borderRadius: '20px',
+          borderRadius: isMobileView ? '12px' : '20px',
           boxShadow: '0 10px 30px rgba(0, 0, 0, 0.1)'
         }}>
           <h1 style={{ 
-            fontSize: '64px', 
-            marginBottom: '20px',
+            fontSize: isMobileView ? '36px' : '64px', 
+            marginBottom: isMobileView ? '12px' : '20px',
             fontWeight: 'bold',
             color: '#2d3748',
             textShadow: '2px 2px 4px rgba(0, 0, 0, 0.1)',
@@ -1002,7 +1156,7 @@ const Home = () => {
             🌅 RiseWith
           </h1>
           <p style={{ 
-            fontSize: '24px', 
+            fontSize: isMobileView ? '16px' : '24px', 
             color: '#4a5568', 
             marginBottom: '0',
             fontWeight: '500',
@@ -1014,14 +1168,14 @@ const Home = () => {
           
           {/* 추가 설명 */}
           <div style={{
-            marginTop: '20px',
-            padding: '15px',
+            marginTop: isMobileView ? '12px' : '20px',
+            padding: isMobileView ? '12px' : '15px',
             background: 'rgba(102, 126, 234, 0.1)',
-            borderRadius: '12px',
+            borderRadius: isMobileView ? '8px' : '12px',
             border: '1px solid rgba(102, 126, 234, 0.2)'
           }}>
             <p style={{
-              fontSize: '16px',
+              fontSize: isMobileView ? '14px' : '16px',
               color: '#2d3748',
               margin: '0',
               fontStyle: 'italic'
@@ -1034,30 +1188,30 @@ const Home = () => {
         {/* 역할별 소개 */}
         <div style={{ 
           display: 'grid', 
-          gridTemplateColumns: '1fr 1fr', 
-          gap: '30px', 
+          gridTemplateColumns: isMobileView ? '1fr' : '1fr 1fr', 
+          gap: isMobileView ? '16px' : '30px', 
           maxWidth: '800px', 
-          margin: '0 auto 40px' 
+          margin: isMobileView ? '0 auto 24px' : '0 auto 40px' 
         }}>
-          <div className="card" style={{
+          <MobileCard style={{
             background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
             color: 'white',
             textAlign: 'center',
-            padding: '40px 30px',
+            padding: isMobileView ? '24px 20px' : '40px 30px',
             border: 'none',
             boxShadow: '0 15px 35px rgba(37, 99, 235, 0.3)',
             borderRadius: '16px'
           }}>
-            <div style={{ fontSize: '56px', marginBottom: '20px', filter: 'drop-shadow(2px 2px 4px rgba(0,0,0,0.3))' }}>🌅</div>
+            <div style={{ fontSize: isMobileView ? '40px' : '56px', marginBottom: isMobileView ? '12px' : '20px', filter: 'drop-shadow(2px 2px 4px rgba(0,0,0,0.3))' }}>🌅</div>
             <h3 style={{ 
-              marginBottom: '20px', 
+              marginBottom: isMobileView ? '12px' : '20px', 
               color: 'white', 
-              fontSize: '28px',
+              fontSize: isMobileView ? '20px' : '28px',
               fontWeight: 'bold',
               textShadow: '1px 1px 2px rgba(0, 0, 0, 0.3)'
             }}>Rise Mentor</h3>
             <p style={{ 
-              fontSize: '18px', 
+              fontSize: isMobileView ? '14px' : '18px', 
               lineHeight: '1.7', 
               opacity: 0.95,
               fontWeight: '400',
@@ -1066,27 +1220,27 @@ const Home = () => {
               경험과 지식으로 다른 이들의<br/>
               <strong>성공적인 도약</strong>을 함께 이끌어주세요
             </p>
-          </div>
+          </MobileCard>
           
-          <div className="card" style={{
+          <MobileCard style={{
             background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
             color: 'white',
             textAlign: 'center',
-            padding: '40px 30px',
+            padding: isMobileView ? '24px 20px' : '40px 30px',
             border: 'none',
             boxShadow: '0 15px 35px rgba(5, 150, 105, 0.3)',
             borderRadius: '16px'
           }}>
-            <div style={{ fontSize: '56px', marginBottom: '20px', filter: 'drop-shadow(2px 2px 4px rgba(0,0,0,0.3))' }}>🤲</div>
+            <div style={{ fontSize: isMobileView ? '40px' : '56px', marginBottom: isMobileView ? '12px' : '20px', filter: 'drop-shadow(2px 2px 4px rgba(0,0,0,0.3))' }}>🤲</div>
             <h3 style={{ 
-              marginBottom: '20px', 
+              marginBottom: isMobileView ? '12px' : '20px', 
               color: 'white', 
-              fontSize: '28px',
+              fontSize: isMobileView ? '20px' : '28px',
               fontWeight: 'bold',
               textShadow: '1px 1px 2px rgba(0, 0, 0, 0.3)'
             }}>Rise Together</h3>
             <p style={{ 
-              fontSize: '18px', 
+              fontSize: isMobileView ? '14px' : '18px', 
               lineHeight: '1.7', 
               opacity: 0.95,
               fontWeight: '400',
@@ -1095,35 +1249,60 @@ const Home = () => {
               멘토와 함께 손을 잡고<br/>
               <strong>더 높은 곳</strong>으로 함께 올라가세요
             </p>
-          </div>
+          </MobileCard>
         </div>
         
-        <div style={{ display: 'flex', gap: '20px', justifyContent: 'center' }}>
-          <Link to="/login" className="btn btn-primary" style={{ 
-            padding: '18px 36px', 
-            fontSize: '20px',
-            fontWeight: 'bold',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            border: 'none',
-            borderRadius: '12px',
-            textShadow: '1px 1px 2px rgba(0, 0, 0, 0.2)',
-            boxShadow: '0 8px 20px rgba(102, 126, 234, 0.3)',
-            transform: 'translateY(0)',
-            transition: 'all 0.3s ease'
-          }}>
+        <div style={{ 
+          display: 'flex', 
+          flexDirection: isMobileView ? 'column' : 'row',
+          gap: isMobileView ? '12px' : '20px', 
+          justifyContent: 'center',
+          alignItems: 'center',
+          maxWidth: isMobileView ? '100%' : 'auto'
+        }}>
+          <TouchButton 
+            className="btn-primary haptic-feedback" 
+            style={{ 
+              padding: isMobileView ? '16px 24px' : '18px 36px', 
+              fontSize: isMobileView ? '16px' : '20px',
+              fontWeight: 'bold',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              border: 'none',
+              borderRadius: '12px',
+              textShadow: '1px 1px 2px rgba(0, 0, 0, 0.2)',
+              boxShadow: '0 8px 20px rgba(102, 126, 234, 0.3)',
+              transform: 'translateY(0)',
+              transition: 'all 0.3s ease',
+              width: isMobileView ? '100%' : 'auto',
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            onClick={() => window.location.href = '/login'}
+          >
             🚀 시작하기
-          </Link>
-          <Link to="/signup" className="btn btn-secondary" style={{ 
-            padding: '18px 36px', 
-            fontSize: '20px',
-            fontWeight: 'bold',
-            borderRadius: '12px',
-            boxShadow: '0 8px 20px rgba(0, 0, 0, 0.1)',
-            transform: 'translateY(0)',
-            transition: 'all 0.3s ease'
-          }}>
+          </TouchButton>
+          <TouchButton 
+            className="btn-secondary haptic-feedback" 
+            style={{ 
+              padding: isMobileView ? '16px 24px' : '18px 36px', 
+              fontSize: isMobileView ? '16px' : '20px',
+              fontWeight: 'bold',
+              borderRadius: '12px',
+              boxShadow: '0 8px 20px rgba(0, 0, 0, 0.1)',
+              transform: 'translateY(0)',
+              transition: 'all 0.3s ease',
+              width: isMobileView ? '100%' : 'auto',
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            onClick={() => window.location.href = '/signup'}
+          >
             📝 회원가입
-          </Link>
+          </TouchButton>
         </div>
       </div>
     </div>
